@@ -28,8 +28,6 @@ public class EnvelopeService extends AccessibilityService {
      */
     static final String ENVELOPE_TEXT_KEY = "[微信红包]";
 
-    Rect mRect = new Rect();
-
     boolean isCanClick = true;
 
     @Override
@@ -184,9 +182,8 @@ public class EnvelopeService extends AccessibilityService {
                 }
                 break;
             }
-
-
-        } else if (look != null && !look.isEmpty()) {
+        }
+        if (look != null && !look.isEmpty()) {
             receiveMyselfEnvelope(nodeInfo, look);
         }
     }
@@ -200,7 +197,6 @@ public class EnvelopeService extends AccessibilityService {
             nodeInfo = nodeInfo.getParent();
         }
     }
-
 
     /**
      * 领取自己发的红包
