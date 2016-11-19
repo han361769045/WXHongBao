@@ -29,6 +29,7 @@ public class EnvelopeService extends AccessibilityService {
     static final String ENVELOPE_TEXT_KEY = "[微信红包]";
 
     boolean isCanClick = true;
+    boolean isCanClickMyself = true;
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -108,9 +109,9 @@ public class EnvelopeService extends AccessibilityService {
     private void back() {
         AccessibilityNodeInfo nodeInfo = getRootInActiveWindow();
         //找返回按钮 点击返回
-        List<AccessibilityNodeInfo> ba = nodeInfo.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/gd");
-        for (int i = 0; i < ba.size(); i++) {
-            ba.get(i).getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK);
+        List<AccessibilityNodeInfo> ba = nodeInfo.findAccessibilityNodeInfosByText("返回");
+        if (!ba.isEmpty()) {
+            click(ba.get(0).getParent());
         }
     }
 
@@ -123,15 +124,13 @@ public class EnvelopeService extends AccessibilityService {
             Log.e(TAG, "rootWindow为空");
             return;
         }
-        List<AccessibilityNodeInfo> list = nodeInfo.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/bfi");
-        if (!list.isEmpty()) {
+        List<AccessibilityNodeInfo> over = nodeInfo.findAccessibilityNodeInfosByText("手慢了，红包派完了");
+        if (over.isEmpty()) {
             Log.e(TAG, "打开红包");
-            click(list.get(0));
+            click(nodeInfo.getChild(3));
         } else {
-            Log.e(TAG, "红包被抢空了");
-            click(nodeInfo.findAccessibilityNodeInfosByViewId("com.tencent.mm:id/bfm").get(0));
+            click(nodeInfo.getChild(2));
         }
-//            nodeInfo.getChild(3).performAction(AccessibilityNodeInfo.ACTION_CLICK);
     }
 
     /**
@@ -153,14 +152,14 @@ public class EnvelopeService extends AccessibilityService {
         Log.e(TAG, "-->receive:" + receive);
         Log.e(TAG, "-->look:" + look);
 
-        if (listEnvelope != null && !listEnvelope.isEmpty()) {
+        if (!listEnvelope.isEmpty()) {
             //微信home（微信）页面
             for (AccessibilityNodeInfo n : listEnvelope) {
                 Log.i(TAG, "在微信页面看到[微信红包]-->:" + n);
                 n.getParent().getParent().getParent().getParent().performAction(AccessibilityNodeInfo.ACTION_CLICK);
                 break;
             }
-        } else if (list != null && !list.isEmpty()) {
+        } else if (!list.isEmpty()) {
             //最新的红包领起
             for (int i = list.size() - 1; i >= 0; i--) {
                 AccessibilityNodeInfo accessibilityNodeInfo = list.get(i);
@@ -183,8 +182,8 @@ public class EnvelopeService extends AccessibilityService {
                 break;
             }
         }
-        if (look != null && !look.isEmpty()) {
-            receiveMyselfEnvelope(nodeInfo, look);
+        if (!look.isEmpty()) {
+            receiveMyselfEnvelope(nodeInfo, look, event);
         }
     }
 
@@ -203,34 +202,37 @@ public class EnvelopeService extends AccessibilityService {
      *
      * @param nodeInfo
      */
-    private void receiveMyselfEnvelope(AccessibilityNodeInfo nodeInfo, List<AccessibilityNodeInfo> look) {
-        List<AccessibilityNodeInfo> myself = nodeInfo.findAccessibilityNodeInfosByText("你领取了自己发的");
-        List<AccessibilityNodeInfo> over = nodeInfo.findAccessibilityNodeInfosByText("你的红包已被领完");
-        //最新的红包领起
-        for (int i = look.size() - 1; i >= 0; i--) {
-            AccessibilityNodeInfo parent = look.get(i).getParent();
-            if (parent != null) {
+    private void receiveMyselfEnvelope(AccessibilityNodeInfo nodeInfo, List<AccessibilityNodeInfo> look, AccessibilityEvent event) {
+        String str = event.getContentDescription() == null ? "" : event.getContentDescription().toString();
+        //判断是否是群聊
+        if (str.contains("(") && str.contains(")")) {
+            List<AccessibilityNodeInfo> myself = nodeInfo.findAccessibilityNodeInfosByText("你领取了自己发的");
+            List<AccessibilityNodeInfo> over = nodeInfo.findAccessibilityNodeInfosByText("你的红包已被领完");
+            //最新的红包领起
+            for (int i = look.size() - 1; i >= 0; i--) {
+                AccessibilityNodeInfo accessibilityNodeInfo = look.get(i);
                 Rect pc = new Rect();
                 Rect c = new Rect();
                 if (!myself.isEmpty()) {
                     myself.get(myself.size() - 1).getBoundsInScreen(c);
                 }
-                parent.getBoundsInScreen(pc);
-                if ((myself.isEmpty() || pc.top > c.top)) {
-                    Log.i(TAG, "领取自己发的红包 在聊天页面-->领取红包:" + parent);
+                accessibilityNodeInfo.getBoundsInScreen(pc);
+                if ((pc.top > c.top)) {
+                    Log.i(TAG, "领取自己发的红包 在聊天页面-->领取红包:" + accessibilityNodeInfo);
                     //判断红包是否领完
                     if (over.isEmpty()) {
-                        parent.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                        click(accessibilityNodeInfo);
                     } else {
                         over.get(over.size() - 1).getBoundsInScreen(c);
                         if (pc.top > c.top) {
-                            parent.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                            click(accessibilityNodeInfo);
                         }
                     }
                     break;
                 }
             }
         }
+
     }
 
     @Override
